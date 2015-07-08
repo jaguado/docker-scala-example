@@ -1,0 +1,16 @@
+web:
+  build: .
+  command: target/universal/stage/bin/scala-getting-started
+  environment:
+    PORT: 8080
+  ports:
+    - '8080:8080'
+shell:
+  build: .
+  command: bash
+  environment:
+    PORT: 8080
+  ports:
+    - '8080:8080'
+  volumes:
+    - '.:/app/user'
