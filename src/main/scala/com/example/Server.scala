@@ -10,6 +10,8 @@ import org.jboss.netty.handler.codec.http._
 
 import scala.util.Properties
 
+import com.heroku.sdk.jdbc.DatabaseUrl
+
 object Server {
   def main(args: Array[String]) {
     val port = Properties.envOrElse("PORT", "8080").toInt
@@ -37,36 +39,29 @@ class Hello extends Service[HttpRequest, HttpResponse] {
   }
 
   def showDatabase(request: HttpRequest): Future[HttpResponse] = {
-    val connection = getConnection
     try {
-      val stmt = connection.createStatement
-      stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ticks (tick timestamp)")
-      stmt.executeUpdate("INSERT INTO ticks VALUES (now())")
+      val connection = DatabaseUrl.extract(System.getenv("STACK") == null).getConnection
+      try {
+        val stmt = connection.createStatement
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ticks (tick timestamp)")
+        stmt.executeUpdate("INSERT INTO ticks VALUES (now())")
 
-      val rs = stmt.executeQuery("SELECT tick FROM ticks")
+        val rs = stmt.executeQuery("SELECT tick FROM ticks")
 
-      var out = ""
-      while (rs.next) {
-        out += "Read from DB: " + rs.getTimestamp("tick") + "\n"
+        var out = ""
+        while (rs.next) {
+          out += "Read from DB: " + rs.getTimestamp("tick") + "\n"
+        }
+
+        val response = Response()
+        response.setStatusCode(200)
+        response.setContentString(out)
+        Future(response)
+      } finally {
+        connection.close()
       }
-
-      val response = Response()
-      response.setStatusCode(200)
-      response.setContentString(out)
-      Future(response)
-    } finally {
-      connection.close()
+    } catch {
+      case e: Exception => e.printStackTrace; throw e
     }
-  }
-
-  def getConnection(): Connection = {
-    val dbUri = new URI(System.getenv("DATABASE_URL"))
-    val username = dbUri.getUserInfo.split(":")(0)
-    val password = dbUri.getUserInfo.split(":")(1)
-    var dbUrl = s"jdbc:postgresql://${dbUri.getHost}:${dbUri.getPort}${dbUri.getPath}"
-    if (System.getenv("STACK") == null) { // means we're not on Heroku
-      dbUrl = s"${dbUrl}?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
-    }
-    DriverManager.getConnection(dbUrl, username, password)
   }
 }

@@ -3,14 +3,22 @@ web:
   command: target/universal/stage/bin/scala-getting-started
   environment:
     PORT: 8080
+    DATABASE_URL: 'postgres://postgres:@herokuPostgresql:5432/postgres'
   ports:
     - '8080:8080'
+  links:
+    - herokuPostgresql
 shell:
   build: .
   command: bash
   environment:
     PORT: 8080
+    DATABASE_URL: 'postgres://postgres:@herokuPostgresql:5432/postgres'
   ports:
     - '8080:8080'
+  links:
+    - herokuPostgresql
   volumes:
     - '.:/app/user'
+herokuPostgresql:
+  image: postgres
