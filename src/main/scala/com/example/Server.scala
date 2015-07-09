@@ -3,10 +3,9 @@ package com.example
 import java.net.URI
 import java.sql.{Connection, DriverManager}
 
-import com.twitter.finagle.http.Response
-import com.twitter.finagle.{Http, Service}
+import com.twitter.finagle.{Httpx, Service}
+import com.twitter.finagle.httpx
 import com.twitter.util.{Await, Future}
-import org.jboss.netty.handler.codec.http._
 
 import scala.util.Properties
 
@@ -17,28 +16,29 @@ object Server {
     val port = Properties.envOrElse("PORT", "8080").toInt
     println("Starting on port: "+port)
 
-    val server = Http.serve(":" + port, new Hello)
+    val service = new Hello
+    val server = Httpx.serve(":" + port, service)
     Await.ready(server)
   }
 }
 
-class Hello extends Service[HttpRequest, HttpResponse] {
-  def apply(request: HttpRequest): Future[HttpResponse] = {
-    if (request.getUri.endsWith("/db")) {
+class Hello extends Service[httpx.Request, httpx.Response] {
+  def apply(request: httpx.Request): Future[httpx.Response] = {
+    if (request.uri.endsWith("/db")) {
       showDatabase(request);
     } else {
       showHome(request);
     }
   }
 
-  def showHome(request: HttpRequest): Future[HttpResponse] = {
-    val response = Response()
+  def showHome(request: httpx.Request): Future[httpx.Response] = {
+    val response = httpx.Response()
     response.setStatusCode(200)
     response.setContentString("Hello from Scala and Docker!")
     Future(response)
   }
 
-  def showDatabase(request: HttpRequest): Future[HttpResponse] = {
+  def showDatabase(request: httpx.Request): Future[httpx.Response] = {
     try {
       val connection = DatabaseUrl.extract(System.getenv("STACK") == null).getConnection
       try {
@@ -53,7 +53,7 @@ class Hello extends Service[HttpRequest, HttpResponse] {
           out += "Read from DB: " + rs.getTimestamp("tick") + "\n"
         }
 
-        val response = Response()
+        val response = httpx.Response()
         response.setStatusCode(200)
         response.setContentString(out)
         Future(response)
