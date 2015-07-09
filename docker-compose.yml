@@ -1,6 +1,6 @@
 web:
   build: .
-  command: target/universal/stage/bin/scala-getting-started
+  command: target/universal/stage/bin/scala-heroku-docker
   environment:
     PORT: 8080
     DATABASE_URL: 'postgres://postgres:@herokuPostgresql:5432/postgres'
